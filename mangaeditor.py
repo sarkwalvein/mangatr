@@ -233,9 +233,11 @@ class MangaEventHandler:
         return True
         
     def _changePage(self, newIdx):
+        saveThread = None
+        
         if self._unsavedChanges:
             saveThread = SavePageThread(self._mangaPage)
-            saveThread.start()
+            self._unsavedChanges = False
             
         newFile = self._mangaEditor.getFileList()[newIdx]
         
@@ -243,11 +245,17 @@ class MangaEventHandler:
         if busySaveThread is not None:
             busySaveThread.join()
         
-        self._unsavedChanges = False
         self._mangaPage = MangaPage(self._mangaEditor.getProjectFolder(), newFile)
         self._pageIdx = newIdx
         self._topRecenter()
         self._redraw()
+
+        if saveThread is not None:
+            # We delay starting the save thread to the very end step
+            # of change page, this way we don't saturate our precious
+            # limited resource needed both for reading a new page
+            # and saving the old page: HDD bandwidth.
+            saveThread.start()
         
     def _topRecenter(self):
         self._off = [0, 0]
